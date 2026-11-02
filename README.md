@@ -4,7 +4,7 @@
 
 - **Live Product:** [https://brandcheck.manasj1234567890.workers.dev](https://brandcheck.manasj1234567890.workers.dev)
 - **Source Repository:** [https://github.com/Manas-Jain-24/brandcheck](https://github.com/Manas-Jain-24/brandcheck)
-- **Documentation:** [CodeStar 30 Requirements](HACKATHON.md) · [Round 2 Submission](docs/BrandCheck_Round_2_Submission.pdf) · [Round 3 Finals Report](docs/BrandCheck_Round_3_Finals.pdf) · [Verification & Test Record](docs/TESTING.md)
+- **Documentation:** [Product overview for sharing](docs/BrandCheck_Product_Overview.pdf) · [CodeStar 30 Requirements](HACKATHON.md) · [Round 2 Submission](docs/BrandCheck_Round_2_Submission.pdf) · [Round 3 Finals Report](docs/BrandCheck_Round_3_Finals.pdf) · [Verification & Test Record](docs/TESTING.md)
 
 ---
 
