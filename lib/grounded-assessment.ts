@@ -31,11 +31,10 @@ const compatibleKinds: Record<Finding["category"], Source["kind"][]> = {
 };
 
 export function groundAIFinding(finding: Finding, sources: Source[]): Finding | null {
-  const source = sources.find(s => s.id === finding.sourceId && s.status === "Approved");
+  const source = sources.find(s => s.id === finding.sourceId && s.version === finding.sourceVersion && s.status === "Approved");
   if (!source || !compatibleKinds[finding.category]?.includes(source.kind)) return null;
   return {
     ...finding,
-    sourceVersion: source.version,
     explanation: finding.explanation || `AI located this excerpt for human review against approved source “${source.title}” (${source.id} v${source.version}). The source says: ${source.body}`,
     suggestion: finding.suggestion || "Compare this wording with the approved source and revise it if the guideline applies.",
     replacement: finding.replacement,

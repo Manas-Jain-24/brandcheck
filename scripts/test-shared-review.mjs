@@ -384,6 +384,9 @@ test("saved AI assessment cannot repeat unsupported model conclusions", async ()
   assert.ok(!JSON.stringify(saved).includes("regulatory breach"));
   const wrongSource = { id: "ai:1", category: "Claims", sourceId: "TERM-001", sourceVersion: "1.0", explanation: "Regulatory breach", suggestion: "Replace all", excerpt: "Our draft" };
   assert.equal(groundAIFinding(wrongSource, defaultPolicy.sources), null);
+  const claimSource = defaultPolicy.sources.find(source => source.kind === "Claim policy");
+  assert.ok(claimSource);
+  assert.equal(groundAIFinding({ ...wrongSource, sourceId: claimSource.id, sourceVersion: "retired-version" }, defaultPolicy.sources), null);
 });
 test("saved image review checks alt text, approval fingerprint and graphic palette", async () => {
   const { db, workspaceId } = await fixture();

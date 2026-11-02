@@ -1286,7 +1286,7 @@ export default function App({ autoStart = false }: { autoStart?: boolean } = {})
                     <div className="assessment-top">
                       <div className="assessment-badge-group">
                         <div className="small-label">
-                          AI GOVERNANCE ASSESSMENT
+                          SOURCE-LINKED REVIEW SUMMARY
                         </div>
                         <span
                           className={`risk-badge risk-${state.assessment.riskLevel.toLowerCase()}`}
@@ -1295,7 +1295,7 @@ export default function App({ autoStart = false }: { autoStart?: boolean } = {})
                         </span>
                       </div>
                       <div className="score-meter">
-                        <div className="score-label">Compliance Score</div>
+                        <div className="score-label">Review priority index</div>
                         <div
                           className={`score-val ${
                             state.assessment.score < 50
@@ -1331,7 +1331,7 @@ export default function App({ autoStart = false }: { autoStart?: boolean } = {})
                       state.status !== "awaiting" && (
                         <div className="suggested-full-rewrite">
                           <div className="rewrite-header">
-                            <small>RECOMMENDED COMPLIANT FULL DRAFT</small>
+                            <small>SUGGESTED DRAFT · RECHECK REQUIRED</small>
                             <button
                               type="button"
                               className="subtle-button apply-rewrite-btn"
@@ -1340,11 +1340,11 @@ export default function App({ autoStart = false }: { autoStart?: boolean } = {})
                                   text: state.assessment!.suggestedRewrite,
                                 });
                                 setToast(
-                                  "Compliant rewrite applied! Run brand review to verify zero errors.",
+                                  "Suggested rewrite applied. Run brand review again before approval.",
                                 );
                               }}
                             >
-                              Apply Compliant Rewrite ↗
+                              Apply Suggested Rewrite ↗
                             </button>
                           </div>
                           <blockquote className="rewrite-text">

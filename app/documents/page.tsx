@@ -53,7 +53,7 @@ export default function DocumentReview() {
 
   const [filter, setFilter] = useState<"all" | "attention" | "suggestion">("all");
 
-  function applyCompliantRewrites() {
+  function applyAvailableReplacements() {
     if (!document || !findings.length) return;
     let fixedCount = 0;
     const newParts = document.parts.map(part => {
@@ -71,7 +71,7 @@ export default function DocumentReview() {
     setFindings(checked.slice(0, 200));
     const fullText = newParts.map(p => p.text).join("\n\n");
     setAssessment(groundedAssessment(checked.map(c => c.finding), fullText));
-    setMessage(`Applied ${fixedCount} compliant replacement${fixedCount === 1 ? "" : "s"} across document sections.`);
+    setMessage(`Applied ${fixedCount} suggested term replacement${fixedCount === 1 ? "" : "s"} and refreshed the findings. Review any remaining issues before handoff.`);
   }
 
   function applySingleFix(partIndex: number, from: string, to: string) {
@@ -228,7 +228,7 @@ export default function DocumentReview() {
                       Document Governance Scorecard
                     </span>
                     <h3 className="text-xl font-serif text-[var(--text-main)] m-0">
-                      Pre-Publication Compliance Assessment
+                      Pre-Publication Review Summary
                     </h3>
                   </div>
                   <div className="flex items-center gap-3">
@@ -243,7 +243,7 @@ export default function DocumentReview() {
                       {assessment.riskLevel} Exposure
                     </span>
                     <div className="flex items-center gap-2 pl-3 border-l border-[var(--border-subtle)]">
-                      <span className="text-xs text-[var(--text-muted)] font-medium">Compliance Index:</span>
+                      <span className="text-xs text-[var(--text-muted)] font-medium">Review priority index:</span>
                       <strong className="text-lg font-mono text-[var(--text-main)]">{assessment.score}/100</strong>
                     </div>
                   </div>
@@ -289,10 +289,10 @@ export default function DocumentReview() {
                     </span>
                     <button
                       type="button"
-                      onClick={applyCompliantRewrites}
+                      onClick={applyAvailableReplacements}
                       className="h-8 px-4 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-primary-hover)] transition-colors shadow-sm flex items-center gap-1.5"
                     >
-                      <span>✦ Apply All Compliant Fixes across Sections</span>
+                      <span>✦ Apply Available Term Fixes</span>
                     </button>
                   </div>
                 )}

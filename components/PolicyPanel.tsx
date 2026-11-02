@@ -273,7 +273,7 @@ export default function PolicyPanel({
                   </div>
                 )}
 
-                {p.diff && (
+                {Boolean(p.diff) && (
                   <details className="text-xs">
                     <summary className="cursor-pointer text-[var(--accent-primary)] font-medium py-0.5">
                       View policy diff

@@ -389,7 +389,7 @@ export default function WorkspaceProduct() {
                                   ● {review.assessment.riskLevel} Risk Exposure
                                 </span>
                                 <div className="ws-score-box">
-                                  <span>Compliance Score:</span>
+                                  <span>Review priority index:</span>
                                   <span className={`ws-score-val ${review.assessment.score < 50 ? "score-low" : review.assessment.score < 80 ? "score-med" : "score-high"}`}>
                                     {review.assessment.score}/100
                                   </span>
@@ -410,14 +410,14 @@ export default function WorkspaceProduct() {
                                 <div className="ws-rewrite-box">
                                   <div className="ws-rewrite-header">
                                     <small className="text-[11px] font-semibold text-[var(--accent-primary)] uppercase tracking-wide">
-                                      Compliant Full Rewrite
+                                      Suggested draft · recheck required
                                     </small>
                                     <button
                                       type="button"
                                       className="secondary text-xs h-6 px-2 font-medium"
                                       disabled={busy}
                                       onClick={() => {
-                                        if (window.confirm("Apply compliant rewrite? This will update your editor text with the source-grounded compliant version.")) {
+                                        if (window.confirm("Apply this suggested rewrite? It will update your editor text. Run a new review before submitting.")) {
                                           setBody(review.assessment!.suggestedRewrite);
                                           setDocument(null);
                                         }
