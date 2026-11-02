@@ -35,8 +35,8 @@ export function groundAIFinding(finding: Finding, sources: Source[]): Finding | 
   if (!source || !compatibleKinds[finding.category]?.includes(source.kind)) return null;
   return {
     ...finding,
-    explanation: finding.explanation || `AI located this excerpt for human review against approved source “${source.title}” (${source.id} v${source.version}). The source says: ${source.body}`,
+    explanation: `AI located this excerpt for human review against approved source “${source.title}” (${source.id} v${source.version}). The source says: ${source.body}`,
     suggestion: finding.suggestion || "Compare this wording with the approved source and revise it if the guideline applies.",
-    replacement: finding.replacement,
+    replacement: undefined,
   };
 }

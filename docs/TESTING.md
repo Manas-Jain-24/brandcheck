@@ -5,7 +5,7 @@
 - Imported the latest GitHub `main`, including the Round 3 document, policy and scorecard changes. The local design branch had the same tree as the corresponding GitHub design commits, so the merge retained the GitHub feature changes.
 - Verified 47 SQLite-backed tests, strict TypeScript and the production Vinext build after correcting a proposal diff render type error.
 - On the public Cloudflare deployment, verified the guest review finds four source-linked issues; the document sample returns three findings with page locations; and the policy sandbox activates a sample rename and flags three of four stored drafts for review.
-- Corrected the current source so AI simulations cannot enter the real finding list after an API failure, AI findings must match an active source version, and suggested rewrites are labelled as suggestions requiring review. These corrections still need deployment to the Cloudflare Worker.
+- Corrected the current source so AI simulations cannot enter the real finding list after an API failure, AI findings must match an active source version, AI explanations quote that approved source, and model-proposed one-click replacements are discarded. Suggested rewrites are labelled as suggestions requiring review. These corrections still need deployment to the Cloudflare Worker.
 
 Verified 31 October 2026 (IST). This file records what was tested; it is not a submission or a claim about event eligibility.
 
