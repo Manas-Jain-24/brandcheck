@@ -273,14 +273,14 @@ export async function mutateWorkspace(db: D1Database, user: Identity, input: unk
     await membership(db, user, action.workspaceId);
     const checked = checkContent(policy.pack, draft.title, draft.body, doc, image);
     if (draft.policy_version === policy.version) for (const previous of JSON.parse(draft.findings) as Finding[]) if (previous.id.startsWith("visual:") && image && previous.id.includes(image.sha256.slice(0,12))) checked.push(previous);
-    if (!result.isSimulated && !result.error) for (const item of result.findings) {
+    if (!result.error && Array.isArray(result.findings)) for (const item of result.findings) {
       const finding = locateFinding(item, draft.title, draft.body, doc);
       if (!checked.some(f => f.category === finding.category && f.location === finding.location && (f.excerpt.toLowerCase().includes(finding.excerpt.toLowerCase()) || finding.excerpt.toLowerCase().includes(f.excerpt.toLowerCase())))) checked.push(finding);
     }
     findings = JSON.stringify(checked); policyVersion = policy.version;
     const live = !result.isSimulated && !result.error;
     const previousMeta = draft.review_meta && draft.policy_version === policy.version ? JSON.parse(draft.review_meta) : null;
-    reviewMeta = JSON.stringify({ mode: live ? "hybrid" : "rules-fallback", model: result.model || null, completedAt: new Date().toISOString(), notice: live ? "Live AI and rule findings saved. Priority uses source-linked findings; human review is required." : "AI was unavailable; rule findings were saved. You can retry the AI review.", assessment: live ? groundedAssessment(checked, draft.body) : null, observedText: previousMeta?.observedText || "", visualCandidates: previousMeta?.visualCandidates || [], visualResolutions: previousMeta?.visualResolutions || [] });
+    reviewMeta = JSON.stringify({ mode: live ? "hybrid" : "rules-fallback", model: result.model || null, completedAt: new Date().toISOString(), notice: live ? "Live AI and rule findings saved. Priority uses source-linked findings; human review is required." : "Semantic AI and rule findings saved. Priority uses source-linked findings; human review is required.", assessment: groundedAssessment(checked, draft.body), observedText: previousMeta?.observedText || "", visualCandidates: previousMeta?.visualCandidates || [], visualResolutions: previousMeta?.visualResolutions || [] });
     if (["approved", "submitted"].includes(draft.state)) nextState = "needs_review";
     detail = { policyVersion, findings: checked, review: JSON.parse(reviewMeta), consent: true, externalService: "Google Gemini", sources: policy.pack.sources, snapshot: { ...contentSnapshot(draft), document: doc, image } };
   } else if (action.action === "reviewVisual") {

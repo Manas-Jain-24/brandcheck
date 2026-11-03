@@ -1583,7 +1583,7 @@ export default function App({ autoStart = false }: { autoStart?: boolean } = {})
                                     className="subtle-button"
                                     onClick={() => applySuggestion(finding)}
                                   >
-                                    Apply term fix
+                                    {finding.category === "Terminology" ? "Apply term fix" : "Apply suggested claim"}
                                   </button>
                                 )}
                                 <input
