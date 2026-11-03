@@ -15,7 +15,12 @@ export default function DocumentReview() {
   const [foreground, setForeground] = useState("#777777"); const [background, setBackground] = useState("#FFFFFF");
   const [workspaces, setWorkspaces] = useState<{ id: string; name: string }[] | null>(null); const [workspaceId, setWorkspaceId] = useState("");
   const input = useRef<HTMLInputElement>(null);
-  const ratio = contrastRatio(foreground, background);
+  let ratio = 1;
+  try {
+    ratio = contrastRatio(foreground, background);
+  } catch {
+    ratio = 1;
+  }
 
   function autoFixContrast() {
     const hexToRgb = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
@@ -466,7 +471,7 @@ export default function DocumentReview() {
                       setBusy(false);
                     }
                   }}
-                  className="secondary h-8 px-3 text-xs"
+                  className="h-8 px-3 text-xs font-medium rounded-[var(--radius-sm)] border border-[var(--border-strong)] bg-[var(--bg-surface-raised)] text-[var(--text-main)] hover:bg-[var(--bg-surface-sunken)] transition-colors"
                 >
                   Load shared workspaces
                 </button>
@@ -476,7 +481,7 @@ export default function DocumentReview() {
                     <select
                       value={workspaceId}
                       onChange={e => setWorkspaceId(e.target.value)}
-                      className="text-xs h-8 px-2 border border-[var(--border-strong)] rounded-[var(--radius-sm)] bg-[var(--bg-surface)]"
+                      className="text-xs h-8 px-2 border border-[var(--border-strong)] rounded-[var(--radius-sm)] bg-[var(--bg-surface)] text-[var(--text-main)]"
                     >
                       {workspaces.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                     </select>
@@ -500,7 +505,7 @@ export default function DocumentReview() {
                           setBusy(false);
                         }
                       }}
-                      className="h-8 px-3 text-xs"
+                      className="h-8 px-3 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-primary-hover)] transition-colors disabled:opacity-50"
                     >
                       Create shared draft ({document.parts.map(p => p.text).join("\n\n").length.toLocaleString()} / 10,000 chars)
                     </button>

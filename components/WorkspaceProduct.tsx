@@ -49,10 +49,25 @@ export default function WorkspaceProduct() {
   const dirty = selected ? title !== selected.title || body !== selected.body || JSON.stringify(document) !== (selected.document || "null") || JSON.stringify(image) !== (selected.image || "null") : Boolean(title || body || image);
   const inboxCount = data?.drafts.filter(d => d.state === "submitted" && (!d.reviewer_email || d.reviewer_email === user?.email.toLowerCase()) && d.author_id !== user?.userId).length ?? 0;
   const workspaceName = workspaces.find(w => w.id === workspaceId)?.name;
-  async function list() { const result = await api<{ user: { userId: string; email: string }; workspaces: Workspace[] }>("/api/workspaces"); setUser(result.user); setWorkspaces(result.workspaces); return result.workspaces; }
+  async function list() {
+    try {
+      const result = await api<{ user: { userId: string; email: string }; workspaces: Workspace[] }>("/api/workspaces");
+      setUser(result.user);
+      setWorkspaces(result.workspaces);
+      return result.workspaces;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("Sign in")) {
+        setUser(null);
+        setWorkspaces([]);
+        return [];
+      }
+      throw err;
+    }
+  }
   async function load(id: string) { const sequence = ++loadSequence.current; const value = await api<Data>(`/api/workspaces?workspaceId=${encodeURIComponent(id)}`); if (sequence === loadSequence.current) setData(value); return value; }
   function clearDraft() { setDraftId(""); setTitle(""); setBody(""); setDocument(null); setImage(null); setConsent(false); setVisualConsent(false); setNote(""); }
-  useEffect(() => { const params = new URLSearchParams(window.location.search); requestedDraft.current = params.get("draft"); setSigninHref(`/signin-with-chatgpt?return_to=${encodeURIComponent(window.location.pathname + window.location.search)}`); list().then(items => { const target = items.find(w => w.id === params.get("workspace")) ?? items[0]; if (target) setWorkspaceId(target.id); }).catch(error => setMessage(error.message)).finally(() => setReady(true)); }, []);
+  useEffect(() => { const params = new URLSearchParams(window.location.search); requestedDraft.current = params.get("draft"); setSigninHref(`/signin-with-chatgpt?return_to=${encodeURIComponent(window.location.pathname + window.location.search)}`); list().then(items => { const target = items.find(w => w.id === params.get("workspace")) ?? items[0]; if (target) setWorkspaceId(target.id); }).catch(error => { if (!error.message?.includes("Sign in")) setMessage(error.message); }).finally(() => setReady(true)); }, []);
   useEffect(() => { setData(null); clearDraft(); if (workspaceId) load(workspaceId).then(value => { const found = value.drafts.find(d => d.id === requestedDraft.current); requestedDraft.current = null; if (found) { setDraftId(found.id); setTitle(found.title); setBody(found.body); setDocument(found.document ? JSON.parse(found.document) : null); setImage(found.image ? JSON.parse(found.image) : null); } }).catch(error => setMessage(error.message)); return () => { loadSequence.current++; }; }, [workspaceId]);
   function select(draft: Draft) { if (dirty && !window.confirm("Discard unsaved changes and open this draft?")) return; setDraftId(draft.id); setTitle(draft.title); setBody(draft.body); setDocument(draft.document ? JSON.parse(draft.document) : null); setImage(draft.image ? JSON.parse(draft.image) : null); setConsent(false); setVisualConsent(false); setNote(""); setMessage(""); }
   async function run(action: Record<string, unknown>) {
@@ -182,7 +197,7 @@ export default function WorkspaceProduct() {
         {busy && <div role="status" className="product-notice">{pending === "reviewAI" ? "Reviewing saved revision with Gemini. Content and active policy are verified before results are committed." : pending === "reviewVisual" ? "Inspecting saved image preview against approved visual guidelines." : pending === "import" ? "Extracting document text." : "Saving changes."}</div>}
         {message && <div className="product-notice" role="status">{message}</div>}
 
-        {!ready ? <section><h2>Loading workspace…</h2></section> : !user ? <section className="product-signin"><h2>Bring your brand into one workspace</h2><p>Sign in to save guidelines, collaborate on drafts and keep a verified record of every decision.</p><a className="product-button" target="_top" href={signinHref}>Continue with ChatGPT</a><a href="/example" className="ml-4 text-xs underline text-[var(--text-muted)]">Try example without signing in</a></section> : <>
+        {!ready ? <section><h2>Loading workspace…</h2></section> : !user ? <section className="product-signin"><h2>Bring your brand into one workspace</h2><p>Sign in to save guidelines, collaborate on drafts and keep a verified record of every decision.</p><a className="product-button !text-white" style={{ color: "#ffffff" }} target="_top" href={signinHref}>Continue with ChatGPT</a><a href="/example" className="ml-4 text-xs underline text-[var(--text-muted)]">Try example without signing in</a></section> : <>
           <section className="product-workspace-picker">
             <label>Workspace
               <select disabled={busy || dirty} value={workspaceId} onChange={e => setWorkspaceId(e.target.value)}>

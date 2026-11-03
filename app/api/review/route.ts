@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { runGroundedGeminiReview } from "../../../components/brandcheck/aiReview";
+import { runGroundedGeminiReview, runRichSimulatedAiReview } from "../../../components/brandcheck/aiReview";
 import { reserveAIRequest } from "../../../lib/ai-quota";
 
 const sourceSchema = z.object({
@@ -61,8 +61,20 @@ export async function POST(request: Request) {
   try { raw = await readJson(request); } catch { return json({ error: "Use a valid draft and a brand pack under 48 KB." }, 400); }
   const parsed = inputSchema.safeParse(raw);
   if (!parsed.success) return json({ error: "This draft or brand pack has unsupported fields or exceeds the demo limits." }, 400);
-  if (!env.GEMINI_API_KEY) return json({ error: "Live review is not configured. Local brand checks are still available." }, 503);
   if (!parsed.data.body.text.trim() && !parsed.data.body.image) return json({ error: "Add draft text or an image before reviewing." }, 400);
+
+  if (!env.GEMINI_API_KEY) {
+    const { body, sources } = parsed.data;
+    const approved = sources.filter(source => source.status === "Approved");
+    const activeSourcesMap = new Map(approved.map(source => [source.id, source]));
+    const simulated = runRichSimulatedAiReview(body, activeSourcesMap);
+    return json({
+      findings: simulated.findings,
+      assessment: simulated.assessment,
+      isSimulated: true,
+      model: "offline-governance-engine",
+    });
+  }
   try {
     if (!await reserveReview(request)) return json({ error: "The shared demo review limit has been reached. Use local rules or try again later." }, 429, { "Retry-After": "600" });
     const { body, sources, terms, evidence } = parsed.data;

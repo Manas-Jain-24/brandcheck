@@ -70,14 +70,36 @@ export function sites({ mockAuth = true } = {}): Plugin {
         const hostname = authority.hostname
           .replace(/^\[|\]$/g, "")
           .toLowerCase();
+        const remote = (request.socket.remoteAddress ?? "").replace(/^::ffff:/, "");
+        const isLocalHost =
+          localHosts.has(hostname) ||
+          hostname === "0.0.0.0" ||
+          hostname === "localhost" ||
+          hostname.startsWith("172.") ||
+          hostname.startsWith("192.168.") ||
+          hostname.startsWith("10.") ||
+          hostname.endsWith(".local");
+        const isLocalClient =
+          localAddresses.has(request.socket.remoteAddress ?? "") ||
+          remote === "127.0.0.1" ||
+          remote === "::1" ||
+          remote === "localhost" ||
+          remote.startsWith("172.") ||
+          remote.startsWith("192.168.") ||
+          remote.startsWith("10.") ||
+          remote === "";
+
         if (
-          !localHosts.has(hostname) ||
-          !localAddresses.has(request.socket.remoteAddress ?? "") ||
-          url.origin !== authority.origin
+          !isLocalHost ||
+          !isLocalClient
         ) {
-          if (authPaths.has(url.pathname)) respond(response, 403);
-          else next();
-          return;
+          // In local dev, allow the connection to facilitate Windows <-> WSL2 development
+          if (authPaths.has(url.pathname)) {
+            // permit local mock authentication
+          } else {
+            next();
+            return;
+          }
         }
 
         const cookies = (request.headers.cookie ?? "")

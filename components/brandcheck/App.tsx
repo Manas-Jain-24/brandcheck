@@ -16,6 +16,8 @@ import type {
 } from "./model";
 import { reviewDraftHybrid } from "./review";
 import { groundedAssessment } from "../../lib/grounded-assessment";
+import { DEMO_BRANDS, createCustomBrand } from "./brands";
+import type { BrandProfile } from "./brands";
 import {
   attentionFindings,
   createDraft,
@@ -102,6 +104,92 @@ export default function App({ autoStart = false }: { autoStart?: boolean } = {})
   const [focusedSourceId, setFocusedSourceId] = useState<string | null>(null);
   const [showAiConfig, setShowAiConfig] = useState(false);
   const [isStartingDemo, setIsStartingDemo] = useState(false);
+  const [brands, setBrands] = useState<BrandProfile[]>(DEMO_BRANDS);
+  const [currentBrandId, setCurrentBrandId] = useState<string>("novadesk");
+  const [showBrandMenu, setShowBrandMenu] = useState(false);
+  const [showAddBrandModal, setShowAddBrandModal] = useState(false);
+  const [newBrandName, setNewBrandName] = useState("");
+  const [newBrandIndustry, setNewBrandIndustry] = useState("");
+  const [newBrandRetired, setNewBrandRetired] = useState("");
+  const [newBrandPreferred, setNewBrandPreferred] = useState("");
+  const [newBrandDraft, setNewBrandDraft] = useState("");
+  const brandMenuRef = useRef<HTMLDivElement>(null);
+
+  const currentBrand =
+    brands.find((b) => b.id === currentBrandId) || brands[0] || DEMO_BRANDS[0];
+
+  useEffect(() => {
+    if (!showBrandMenu) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        brandMenuRef.current &&
+        !brandMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowBrandMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showBrandMenu]);
+
+  const handleSelectBrand = (brand: BrandProfile) => {
+    setCurrentBrandId(brand.id);
+    setShowBrandMenu(false);
+    const newBody = structuredClone(brand.sampleDraft);
+    setState((previous) => ({
+      ...previous,
+      body: newBody,
+      sources: structuredClone(brand.sources),
+      terms: structuredClone(brand.terms),
+      evidence: structuredClone(brand.evidence),
+      approvedAssets: [],
+      findings: [],
+      reviewedFingerprint: null,
+      dismissals: [],
+      status: "draft",
+      assessment: null,
+      reviewNotice: null,
+      versions: [
+        {
+          id: 1,
+          at: time(),
+          by: "creator",
+          body: newBody,
+          findings: [],
+          dismissals: [],
+          note: `Original ${brand.name} sample draft`,
+        },
+      ],
+    }));
+    setToast(`Switched active workspace to ${brand.name}.`);
+  };
+
+  const handleAddCustomBrand = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (
+      !newBrandName.trim() ||
+      !newBrandRetired.trim() ||
+      !newBrandPreferred.trim()
+    ) {
+      setToast("Enter company name, retired term, and approved term.");
+      return;
+    }
+    const created = createCustomBrand(
+      newBrandName,
+      newBrandIndustry || "Custom Brand",
+      newBrandRetired,
+      newBrandPreferred,
+      newBrandDraft,
+    );
+    setBrands((prev) => [...prev, created]);
+    handleSelectBrand(created);
+    setShowAddBrandModal(false);
+    setNewBrandName("");
+    setNewBrandIndustry("");
+    setNewBrandRetired("");
+    setNewBrandPreferred("");
+    setNewBrandDraft("");
+  };
   const fileInput = useRef<HTMLInputElement>(null);
   const textFileInput = useRef<HTMLInputElement>(null);
   const brandPackFileInput = useRef<HTMLInputElement>(null);
@@ -242,7 +330,7 @@ export default function App({ autoStart = false }: { autoStart?: boolean } = {})
         dismissals: [],
         status:
           previous.status === "approved" &&
-          previous.reviewedFingerprint === reviewFingerprint(previous)
+            previous.reviewedFingerprint === reviewFingerprint(previous)
             ? "approved"
             : "draft",
         reviewRuns: previous.reviewRuns + 1,
@@ -564,7 +652,7 @@ export default function App({ autoStart = false }: { autoStart?: boolean } = {})
     try {
       const text = await file.text();
       if (!text.trim() || text.length > 10_000) {
-        setToast("The file must contain 1–10,000 characters of text.");
+        setToast("The file must contain 1-10,000 characters of text.");
         return;
       }
       updateBody({ title: file.name, channel: "Document", text });
@@ -770,13 +858,71 @@ export default function App({ autoStart = false }: { autoStart?: boolean } = {})
               <small>Review workspace</small>
             </div>
           </div>
-          <div className="workspace-tag">
-            <span className="workspace-avatar">N</span>
-            <div>
-              <strong>NovaDesk</strong>
-              <small>Fictional demo brand</small>
-            </div>
-            <span className="chevron">⌄</span>
+          <div className="workspace-tag-wrapper" ref={brandMenuRef}>
+            <button
+              type="button"
+              className={`workspace-tag workspace-tag-btn ${showBrandMenu ? "active" : ""}`}
+              onClick={() => setShowBrandMenu((prev) => !prev)}
+              aria-expanded={showBrandMenu}
+              aria-label="Switch company brand"
+            >
+              <span className="workspace-avatar">{currentBrand.avatar}</span>
+              <div className="workspace-tag-info">
+                <strong>{currentBrand.name}</strong>
+                <small>{currentBrand.tagline}</small>
+              </div>
+              <span className={`chevron ${showBrandMenu ? "chevron-open" : ""}`}>
+                {showBrandMenu ? "⌃" : "⌄"}
+              </span>
+            </button>
+
+            {showBrandMenu && (
+              <div className="workspace-dropdown" role="menu">
+                <div className="workspace-dropdown-header">
+                  <span>SWITCH DEMO COMPANY</span>
+                </div>
+                <div className="workspace-dropdown-list">
+                  {brands.map((brand) => {
+                    const isSelected = brand.id === currentBrand.id;
+                    return (
+                      <button
+                        key={brand.id}
+                        type="button"
+                        role="menuitem"
+                        className={`workspace-dropdown-item ${isSelected ? "selected" : ""}`}
+                        onClick={() => handleSelectBrand(brand)}
+                      >
+                        <span className="workspace-dropdown-avatar">{brand.avatar}</span>
+                        <div className="workspace-dropdown-info">
+                          <strong>{brand.name}</strong>
+                          <small>{brand.industry}</small>
+                        </div>
+                        {isSelected && <span className="workspace-dropdown-check">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="workspace-dropdown-footer">
+                  <button
+                    type="button"
+                    className="workspace-dropdown-add-btn"
+                    onClick={() => {
+                      setShowBrandMenu(false);
+                      setShowAddBrandModal(true);
+                    }}
+                  >
+                    <span>+</span> Add company profile
+                  </button>
+                  <a
+                    href="/workspace"
+                    className="workspace-dropdown-enterprise-link"
+                    onClick={() => setShowBrandMenu(false)}
+                  >
+                    Open Enterprise Workspace &rarr;
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
           <nav aria-label="Main navigation">
             <div className="nav-caption">WORKSPACE</div>
@@ -802,7 +948,7 @@ export default function App({ autoStart = false }: { autoStart?: boolean } = {})
       <div className="main-column">
         <header className="topbar">
           <div className="breadcrumb">
-            NovaDesk <span>/</span>{" "}
+            {currentBrand.name} <span>/</span>{" "}
             {state.screen === "workspace"
               ? "Content review"
               : state.screen === "sources"
@@ -1146,9 +1292,9 @@ export default function App({ autoStart = false }: { autoStart?: boolean } = {})
                           {state.body.image.source === "approved-demo"
                             ? "Approved demo asset"
                             : state.approvedAssets.some(
-                                  (asset) =>
-                                    asset.sha256 === state.body.image?.sha256,
-                                )
+                              (asset) =>
+                                asset.sha256 === state.body.image?.sha256,
+                            )
                               ? "Reviewer-approved asset in this session"
                               : `Uploaded image · ${(state.body.image.bytes / 1024).toFixed(0)} KB`}
                         </small>
@@ -1297,13 +1443,12 @@ export default function App({ autoStart = false }: { autoStart?: boolean } = {})
                       <div className="score-meter">
                         <div className="score-label">Review priority index</div>
                         <div
-                          className={`score-val ${
-                            state.assessment.score < 50
+                          className={`score-val ${state.assessment.score < 50
                               ? "score-low"
                               : state.assessment.score < 80
                                 ? "score-med"
                                 : "score-high"
-                          }`}
+                            }`}
                         >
                           {state.assessment.score} / 100
                         </div>
@@ -1516,7 +1661,7 @@ export default function App({ autoStart = false }: { autoStart?: boolean } = {})
                     <label className="decision-note">
                       Reviewer note{" "}
                       {state.status === "awaiting" &&
-                      approvalExceptions.length > 0
+                        approvalExceptions.length > 0
                         ? "(required for approval)"
                         : ""}
                       <textarea
@@ -1956,6 +2101,103 @@ export default function App({ autoStart = false }: { autoStart?: boolean } = {})
           required · Built by team mayankkumar.prof
         </footer>
       </div>
+      {showAddBrandModal && (
+        <div
+          className="brand-modal-backdrop"
+          onClick={() => setShowAddBrandModal(false)}
+        >
+          <div
+            className="brand-modal-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="brand-modal-header">
+              <div>
+                <h3>Add new company profile</h3>
+                <p>
+                  Configure brand guidelines, approved terminology, and a sample
+                  draft.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="brand-modal-close"
+                onClick={() => setShowAddBrandModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleAddCustomBrand} className="brand-modal-form">
+              <label>
+                Company name
+                <input
+                  required
+                  placeholder="e.g. Acme Cloud"
+                  value={newBrandName}
+                  onChange={(e) => setNewBrandName(e.target.value)}
+                  maxLength={60}
+                />
+              </label>
+              <label>
+                Industry or tagline
+                <input
+                  placeholder="e.g. Cloud Infrastructure"
+                  value={newBrandIndustry}
+                  onChange={(e) => setNewBrandIndustry(e.target.value)}
+                  maxLength={60}
+                />
+              </label>
+              <div className="brand-modal-row">
+                <label>
+                  Retired terminology
+                  <input
+                    required
+                    placeholder="e.g. LegacyServer"
+                    value={newBrandRetired}
+                    onChange={(e) => setNewBrandRetired(e.target.value)}
+                    maxLength={60}
+                  />
+                </label>
+                <label>
+                  Approved terminology
+                  <input
+                    required
+                    placeholder="e.g. Acme Engine"
+                    value={newBrandPreferred}
+                    onChange={(e) => setNewBrandPreferred(e.target.value)}
+                    maxLength={60}
+                  />
+                </label>
+              </div>
+              <label>
+                Sample draft text
+                <textarea
+                  placeholder="Draft text to check against the new brand rules..."
+                  rows={3}
+                  value={newBrandDraft}
+                  onChange={(e) => setNewBrandDraft(e.target.value)}
+                  maxLength={1000}
+                />
+              </label>
+              <div className="brand-modal-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setShowAddBrandModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="primary-button !text-white"
+                  style={{ color: "#ffffff" }}
+                >
+                  Create & switch company
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {toast && (
         <div className="toast" role="status">
           {toast}

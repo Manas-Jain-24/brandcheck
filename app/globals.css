@@ -260,6 +260,17 @@ code, pre, .font-mono {
   background-color: currentColor;
 }
 
+/* Global button text contrast guarantees */
+.product-button,
+a.product-button,
+button.product-button,
+.dark-button,
+button.dark-button,
+a[href="/workspace"].bg-\[var\(--accent-primary\)\],
+.bg-\[var\(--accent-primary\)\] {
+  color: #ffffff !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
     animation-duration: 0.01ms !important;

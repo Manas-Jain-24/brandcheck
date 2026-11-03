@@ -96,6 +96,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: 4.20260515.1
         version: 4.20260515.1
+      '@rolldown/binding-linux-x64-gnu':
+        specifier: 1.0.1
+        version: 1.0.1
       '@tailwindcss/postcss':
         specifier: 4.2.1
         version: 4.2.1
@@ -6880,8 +6883,7 @@ snapshots:
   '@rolldown/binding-linux-s390x-gnu@1.0.1':
     optional: true
 
-  '@rolldown/binding-linux-x64-gnu@1.0.1':
-    optional: true
+  '@rolldown/binding-linux-x64-gnu@1.0.1': {}
 
   '@rolldown/binding-linux-x64-musl@1.0.1':
     optional: true

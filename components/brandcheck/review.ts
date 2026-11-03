@@ -71,7 +71,9 @@ export function reviewDraft(
         );
     }
 
-    const claimSource = active.get("CLAIM-001");
+    const claimSource =
+      Array.from(active.values()).find((s) => s.kind === "Claim policy") ||
+      active.get("CLAIM-001");
     const numericClaims = [
       ...text.matchAll(
         /\b(?:\d+(?:\.\d+)?\s?(?:x|×|%|percent|times)(?!\w)|double\b|triple\b)/gi,
@@ -116,9 +118,14 @@ export function reviewDraft(
         );
     }
 
-    const toneSource = active.get("TONE-001");
+    const toneSource =
+      Array.from(active.values()).find(
+        (s) =>
+          s.id.includes("TONE") ||
+          (s.kind === "Messaging" && /tone|voice/i.test(s.title)),
+      ) || active.get("TONE-001");
     const absolute = text.match(
-      /\b(?:guarantee(?:s|d)?|always|never|every team|perfect|best ever)\b/i,
+      /\b(?:guarantee(?:s|d)?|always|never|every team|perfect|best ever|miracle cure)\b/i,
     );
     if (toneSource && absolute)
       findings.push(
@@ -138,7 +145,9 @@ export function reviewDraft(
   }
 
   if (body.image) {
-    const accessSource = active.get("ACCESS-001");
+    const accessSource =
+      Array.from(active.values()).find((s) => s.kind === "Accessibility") ||
+      active.get("ACCESS-001");
     if (accessSource && !body.image.decorative && !body.image.alt.trim())
       findings.push(
         makeFinding(accessSource, {
@@ -154,7 +163,9 @@ export function reviewDraft(
             "Describe the information conveyed by the image, or mark it decorative if it adds no information.",
         }),
       );
-    const assetSource = active.get("ASSET-001");
+    const assetSource =
+      Array.from(active.values()).find((s) => s.kind === "Asset policy") ||
+      active.get("ASSET-001");
     if (
       assetSource &&
       body.image.source === "upload" &&
@@ -282,7 +293,7 @@ export async function reviewDraftHybrid(
 
   return {
     findings: merged,
-    assessment: aiResult.isSimulated ? null : groundedAssessment(merged, body.text),
+    assessment: aiResult.assessment ?? (merged.length > 0 ? groundedAssessment(merged, body.text) : null),
     notice,
     isSimulated: Boolean(aiResult.isSimulated),
   };
