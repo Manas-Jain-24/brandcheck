@@ -71,24 +71,7 @@ export async function ensureDatabase(db: D1Database): Promise<void> {
 
 export async function listWorkspaces(db: D1Database, user: Identity) {
   await ensureDatabase(db);
-  const rows = (await db.prepare("SELECT w.id, w.name, m.role FROM workspaces w JOIN memberships m ON w.id = m.workspace_id WHERE m.email = ? ORDER BY w.created_at DESC LIMIT 100").bind(email(user)).all()).results as { id: string; name: string; role: string }[];
-  if (rows.length === 0) {
-    const demoId = "demo-workspace-novadesk";
-    const now = new Date().toISOString();
-    try {
-      await db.prepare("INSERT OR IGNORE INTO workspaces (id, name, created_at) VALUES (?, ?, ?)").bind(demoId, "NovaDesk Production", now).run();
-      await db.prepare("INSERT OR IGNORE INTO memberships (workspace_id, email, role) VALUES (?, ?, 'admin')").bind(demoId, email(user)).run();
-      await db.prepare("INSERT OR IGNORE INTO workspace_policies (workspace_id, version, payload, mutation) VALUES (?, 0, ?, ?)").bind(demoId, JSON.stringify(defaultPolicy), crypto.randomUUID()).run();
-      const sampleDraftId = "sample-draft-launch";
-      const sampleBody = "Meet NovaDesk: built to simplify coordination across distributed teams. While Flowly was known for personal notes, NovaDesk introduces shared workflows. We guarantee it delivers 2x productivity for every team from day one.";
-      await db.prepare("INSERT OR IGNORE INTO shared_drafts (id, workspace_id, author_id, title, body, version, state, updated_at, mutation, findings, policy_version) VALUES (?, ?, ?, ?, ?, 1, 'draft', ?, ?, '[]', 0)").bind(sampleDraftId, demoId, user.userId, "Introducing NovaDesk", sampleBody, now, crypto.randomUUID()).run();
-      await db.prepare("INSERT OR IGNORE INTO audit_events (id, workspace_id, actor_id, actor_email, action, detail, created_at) VALUES (?, ?, ?, ?, 'workspace_created', ?, ?)").bind(crypto.randomUUID(), demoId, user.userId, email(user), JSON.stringify({ name: "NovaDesk Production" }), now).run();
-      return (await db.prepare("SELECT w.id, w.name, m.role FROM workspaces w JOIN memberships m ON w.id = m.workspace_id WHERE m.email = ? ORDER BY w.created_at DESC LIMIT 100").bind(email(user)).all()).results;
-    } catch (seedErr) {
-      console.warn("Auto-seed workspace warning:", seedErr);
-    }
-  }
-  return rows;
+  return (await db.prepare("SELECT w.id, w.name, m.role FROM workspaces w JOIN memberships m ON w.id = m.workspace_id WHERE m.email = ? ORDER BY w.created_at DESC LIMIT 100").bind(email(user)).all()).results;
 }
 export async function readWorkspace(db: D1Database, user: Identity, workspaceId: string) {
   await ensureDatabase(db);
@@ -273,14 +256,14 @@ export async function mutateWorkspace(db: D1Database, user: Identity, input: unk
     await membership(db, user, action.workspaceId);
     const checked = checkContent(policy.pack, draft.title, draft.body, doc, image);
     if (draft.policy_version === policy.version) for (const previous of JSON.parse(draft.findings) as Finding[]) if (previous.id.startsWith("visual:") && image && previous.id.includes(image.sha256.slice(0,12))) checked.push(previous);
-    if (!result.error && Array.isArray(result.findings)) for (const item of result.findings) {
+    if (!result.isSimulated && !result.error && Array.isArray(result.findings)) for (const item of result.findings) {
       const finding = locateFinding(item, draft.title, draft.body, doc);
       if (!checked.some(f => f.category === finding.category && f.location === finding.location && (f.excerpt.toLowerCase().includes(finding.excerpt.toLowerCase()) || finding.excerpt.toLowerCase().includes(f.excerpt.toLowerCase())))) checked.push(finding);
     }
     findings = JSON.stringify(checked); policyVersion = policy.version;
     const live = !result.isSimulated && !result.error;
     const previousMeta = draft.review_meta && draft.policy_version === policy.version ? JSON.parse(draft.review_meta) : null;
-    reviewMeta = JSON.stringify({ mode: live ? "hybrid" : "rules-fallback", model: result.model || null, completedAt: new Date().toISOString(), notice: live ? "Live AI and rule findings saved. Priority uses source-linked findings; human review is required." : "Semantic AI and rule findings saved. Priority uses source-linked findings; human review is required.", assessment: groundedAssessment(checked, draft.body), observedText: previousMeta?.observedText || "", visualCandidates: previousMeta?.visualCandidates || [], visualResolutions: previousMeta?.visualResolutions || [] });
+    reviewMeta = JSON.stringify({ mode: live ? "hybrid" : "rules-fallback", model: live ? result.model || null : null, completedAt: new Date().toISOString(), notice: live ? "Live AI and rule findings saved. Priority uses source-linked findings; human review is required." : "AI was unavailable; rule findings were saved. You can retry the AI review.", assessment: live ? groundedAssessment(checked, draft.body) : null, observedText: previousMeta?.observedText || "", visualCandidates: previousMeta?.visualCandidates || [], visualResolutions: previousMeta?.visualResolutions || [] });
     if (["approved", "submitted"].includes(draft.state)) nextState = "needs_review";
     detail = { policyVersion, findings: checked, review: JSON.parse(reviewMeta), consent: true, externalService: "Google Gemini", sources: policy.pack.sources, snapshot: { ...contentSnapshot(draft), document: doc, image } };
   } else if (action.action === "reviewVisual") {
