@@ -9,6 +9,7 @@ import type {
   TermRule,
 } from "./model";
 import { DEFAULT_GEMINI_MODEL } from "./model";
+import { generateAlternativeClaim } from "./review";
 
 export interface GeminiFindingPayload {
   category: Category;
@@ -175,231 +176,304 @@ export function runRichSimulatedAiReview(
     sourcesList.find((s) => s.kind === "Messaging" && !s.id.includes("TONE")) ||
     activeSourcesMap.get("MSG-001");
 
-  // 1. Extreme Quantified / Multiplier Claims
-  if (claimSource) {
-    const quantifiedPatterns = [
-      {
-        regex: /\b10x\s+productivity\b/i,
-        excerpt: "10x productivity",
-        explanation:
-          "Promising a 10x (1,000%) increase in team productivity is an extreme quantified assertion. Under advertising governance and CLAIM-001, performance multipliers must be validated by peer-reviewed or independent customer benchmark studies.",
-        suggestion:
-          "Reframe to approved positioning: 'designed to streamline workflows and help teams collaborate more effectively.'",
-      },
-      {
-        regex: /\beliminates?\s+99(?:\.9)?%\s+of\s+workplace\s+inefficiency\b/i,
-        excerpt: "eliminates 99.9% of workplace inefficiency",
-        explanation:
-          "Near-100% elimination metrics are legally scrutinized as unsubstantiated superlatives. Without statistical measurement methodology on file, this creates severe credibility exposure.",
-        suggestion:
-          "Replace with qualitative benefits: 'significantly reduces repetitive manual coordination.'",
-      },
-      {
-        regex:
-          /\btransforms?\s+a\s+40-hour\s+workweek\s+into\s+just\s+4\s+hours\b/i,
-        excerpt: "transforms a 40-hour workweek into just 4 hours",
-        explanation:
-          "Claiming a 90% reduction in overall working hours constitutes an extraordinary outcome claim. Unsubstantiated lifestyle or work-reduction promises can trigger consumer protection scrutiny.",
-        suggestion:
-          "Highlight specific time-saving features without pledging dramatic workweek reductions.",
-      },
-      {
-        regex: /\b10,000x\s+smarter\b/i,
-        excerpt: "10,000x smarter than the average employee",
-        explanation:
-          "Comparing software intelligence to human employees using arbitrary numerical multipliers (10,000x) is unsubstantiated hyperbole and creates internal workplace friction.",
-        suggestion:
-          "Describe AI capabilities objectively: 'intelligent workflow suggestions trained to assist team execution.'",
-      },
-      {
-        regex:
-          /\bpredicts?\s+your\s+next\s+six\s+months.*?99\.99%\s+accuracy\b/i,
-        excerpt: "predicts your next six months of work with 99.99% accuracy",
-        explanation:
-          "Claiming 99.99% predictive accuracy for complex human project workflows is statistically unverified and sets unachievable customer expectations.",
-        suggestion:
-          "Frame predictive features as planning aids: 'helps anticipate project milestones and resource bottlenecks.'",
-      },
-      {
-        regex: /\bguaranteed\s+500%\s+ROI\s+within\s+7\s+days\b/i,
-        excerpt: "guaranteed 500% ROI within 7 days",
-        explanation:
-          "Promising a 500% return on investment within 7 calendar days constitutes an aggressive financial performance guarantee. Advertising regulations require concrete third-party audit reports before publishing quantified ROI figures.",
-        suggestion:
-          "Remove immediate financial promises; offer pilot programs or case study references instead.",
-      },
-      {
-        regex: /\bincrease\s+revenue\s+by\s+847%\b/i,
-        excerpt: "increase revenue by 847%",
-        explanation:
-          "Specific triple-digit revenue claims (847%) without customer cohort context, baseline figures, or legal disclaimers violate ad transparency standards.",
-        suggestion:
-          "Cite vetted, published customer case studies with verified parameters.",
-      },
-      {
-        regex: /\bcut\s+operational\s+costs\s+by\s+95%\b/i,
-        excerpt: "cut operational costs by 95%",
-        explanation:
-          "A 95% operational cost reduction promise across arbitrary organizations is legally untenable without audit verification. CLAIM-001 requires linked evidence for operational savings.",
-        suggestion:
-          "State: 'helps lower overhead by automating routine operational tasks.'",
-      },
-      {
-        regex: /\b1,000x\s+better\s+than\s+every\s+competitor\b/i,
-        excerpt: "1,000x better than every competitor",
-        explanation:
-          "Broad comparative claims against all competitors require comprehensive, substantiated benchmark testing against market alternatives.",
-        suggestion:
-          "Focus on NovaDesk's unique differentiated capabilities rather than superlative competitor comparisons.",
-      },
-      {
-        regex: /\b50\s+million\s+companies\s+worldwide\b/i,
-        excerpt: "Trusted by 50 million companies worldwide",
-        explanation:
-          "Customer volume statements are factual representations of business scale. Fictional or exaggerated customer counts misrepresent market adoption.",
-        suggestion:
-          "Use verified enterprise customer numbers or approved community scale metrics.",
-      },
-    ];
-
-    quantifiedPatterns.forEach((item, index) => {
-      const match = text.match(item.regex);
-      if (match) {
-        findings.push({
-          id: `ai:claim:${index + 1}`,
-          category: "Claims",
-          severity: "Needs attention",
-          evidenceStatus: "Evidence needed",
-          location: "Draft text",
-          excerpt: match[0],
-          explanation: item.explanation,
-          sourceId: claimSource.id,
-          sourceVersion: claimSource.version,
-          suggestion: item.suggestion,
-          detectedBy: "ai",
-        });
-      }
-    });
+  interface SemanticPattern {
+    regex: RegExp;
+    category: "Claims" | "Tone" | "Messaging";
+    severity: "Needs attention" | "Suggestion";
+    evidenceStatus: "Evidence needed" | "Review suggestion";
+    explanation: (m: string) => string;
+    sourceType: "claim" | "tone" | "msg";
   }
 
-  // 2. Absolutes, Perfection, and Omniscience (Tone)
-  if (toneSource) {
-    const tonePatterns = [
-      {
-        regex: /\bnever\s+makes?\s+mistakes\b/i,
-        excerpt: "never makes mistakes",
-        explanation:
-          "Claiming perfection ('never makes mistakes') violates TONE-001's commitment to calm, grounded, and realistic expectations. Software products cannot promise zero error rates.",
-        suggestion:
-          "Emphasize rigorous automated validation and built-in quality controls.",
-      },
-      {
-        regex: /\bnever\s+experiences?\s+downtime\b/i,
-        excerpt: "never experiences downtime",
-        explanation:
-          "Absolute reliability assertions ('never experiences downtime') conflict with standard industry SLA benchmarks and create legal liability without explicit infrastructure guarantees.",
-        suggestion:
-          "Specify the actual SLA target (e.g. 'designed for high availability enterprise workflows').",
-      },
-      {
-        regex:
-          /\bcompletes?\s+assignments?\s+before\s+you\s+even\s+receive\s+them\b/i,
-        excerpt: "completes assignments before you even receive them",
-        explanation:
-          "This statement is physically impossible and leans into deceptive science-fiction exaggeration rather than authentic product value.",
-        suggestion:
-          "Highlight proactive notifications and workflow automation instead.",
-      },
-      {
-        regex:
-          /\binfinite\s+productivity,\s+unlimited\s+growth,\s+and\s+guaranteed\s+success\b/i,
-        excerpt:
-          "infinite productivity, unlimited growth, and guaranteed success",
-        explanation:
-          "Triple superlative promises ('infinite', 'unlimited', 'guaranteed') are peak marketing hyperbole. TONE-001 explicitly directs writers to avoid sweeping absolute promises.",
-        suggestion:
-          "Close with an honest, inviting call to action focused on real collaboration.",
-      },
-      {
-        regex: /\brevolutionary\b/i,
-        excerpt: "revolutionary",
-        explanation:
-          "The word 'revolutionary' is a clichéd tech hyperbole that conflicts with NovaDesk's calm, specific voice.",
-        suggestion:
-          "Describe concrete technological innovations specifically rather than using 'revolutionary'.",
-      },
-    ];
+  const semanticPatterns: SemanticPattern[] = [
+    // 1. Revenue & Financial Promises
+    {
+      regex: /\b\d+(?:\.\d+)?%\s+(?:increase|growth|boost|jump|surge)\s+in\s+revenue(?:\s+within\s+[^.!?,\n]+)?\b/gi,
+      category: "Claims",
+      severity: "Needs attention",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: (m) => `Promising “${m}” without audited financials is a strictly regulated promotional claim. Performance multipliers must be validated by independent customer benchmarks.`,
+    },
+    {
+      regex: /\b(?:increase|grow|boost|maximize)\s+revenue\s+by\s+\d+(?:\.\d+)?%\b/gi,
+      category: "Claims",
+      severity: "Needs attention",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: (m) => `Quantified revenue metrics like “${m}” require verified audit studies before publication under CLAIM-001.`,
+    },
+    {
+      regex: /\bguaranteed\s+\d+%\s+ROI(?:\s+within\s+[^.!?,\n]+)?\b/gi,
+      category: "Claims",
+      severity: "Needs attention",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: (m) => `Promising “${m}” is an aggressive financial guarantee that triggers consumer protection and advertising scrutiny.`,
+    },
 
-    tonePatterns.forEach((item, index) => {
-      const match = text.match(item.regex);
-      if (match) {
-        findings.push({
-          id: `ai:tone:${index + 1}`,
-          category: "Tone",
-          severity: "Suggestion",
-          evidenceStatus: "Review suggestion",
-          location: "Draft text",
-          excerpt: match[0],
-          explanation: item.explanation,
-          sourceId: toneSource.id,
-          sourceVersion: toneSource.version,
-          suggestion: item.suggestion,
-          detectedBy: "ai",
-        });
+    // 2. Multipliers & Efficiency Promises
+    {
+      regex: /\b\d+x\s+productivity\b/gi,
+      category: "Claims",
+      severity: "Needs attention",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: (m) => `Promising “${m}” is an extreme multiplier claim. Performance multipliers require peer-reviewed or independent study evidence.`,
+    },
+    {
+      regex: /\beliminates?\s+\d+(?:\.\d+)?%\s+of\s+workplace\s+inefficiency\b/gi,
+      category: "Claims",
+      severity: "Needs attention",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: () => "Near-100% elimination metrics are legally scrutinized as unsubstantiated superlatives without documented measurement methodology.",
+    },
+    {
+      regex: /\btransforms?\s+a\s+\d+-hour\s+workweek\s+into\s+just\s+\d+\s+hours\b/gi,
+      category: "Claims",
+      severity: "Needs attention",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: () => "Claiming extreme reductions in working hours constitutes an extraordinary outcome claim requiring independent validation.",
+    },
+    {
+      regex: /\b\d+,\d+x\s+smarter\b/gi,
+      category: "Claims",
+      severity: "Needs attention",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: () => "Comparing software intelligence to humans with arbitrary multipliers is unsubstantiated hyperbole.",
+    },
+
+    // 3. Accuracy & Zero-Failure Assertions
+    {
+      regex: /\b(?:100%|\d{2,3}(?:\.\d+)?%)\s+(?:prediction\s+)?accuracy\b/gi,
+      category: "Claims",
+      severity: "Needs attention",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: (m) => `Claiming “${m}” for complex human or enterprise workflows is statistically unverified and sets unachievable expectations.`,
+    },
+    {
+      regex: /\bzero\s+(?:operational\s+)?failures\b/gi,
+      category: "Claims",
+      severity: "Needs attention",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: () => "Absolute zero-failure claims conflict with standard enterprise SLA realities and create acute legal liability.",
+    },
+    {
+      regex: /\bzero\s+(?:downtime|errors?|bugs?|risk|latency)\b/gi,
+      category: "Claims",
+      severity: "Needs attention",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: (m) => `Asserting “${m}” is an unverified zero-defect superlative that cannot be technically guaranteed.`,
+    },
+    {
+      regex: /\b\d+%\s+of\s+them\s+into\s+paying\s+customers\b/gi,
+      category: "Claims",
+      severity: "Needs attention",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: (m) => `Specific conversion rates like “${m}” without audited cohort benchmarks are legally ungrounded.`,
+    },
+    {
+      regex: /\bcut\s+(?:operational\s+)?costs\s+by\s+\d+%\b/gi,
+      category: "Claims",
+      severity: "Needs attention",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: (m) => `Promising “${m}” across arbitrary organizations is legally untenable without audit verification.`,
+    },
+    {
+      regex: /\b1,000x\s+better\s+than\s+every\s+competitor\b/gi,
+      category: "Claims",
+      severity: "Needs attention",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: () => "Broad comparative superlatives against all competitors require comprehensive, substantiated benchmark testing.",
+    },
+    {
+      regex: /\b\d+\s+million\s+companies\s+worldwide\b/gi,
+      category: "Claims",
+      severity: "Needs attention",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: () => "Customer volume numbers represent factual business scale and cannot be fictionalized or exaggerated.",
+    },
+
+    // 4. Autonomous / Human Replacement
+    {
+      regex: /\bwithout\s+human\s+intervention\b/gi,
+      category: "Claims",
+      severity: "Needs attention",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: () => "Claiming operations occur 'without human intervention' violates human-in-the-loop brand governance and regulatory transparency.",
+    },
+    {
+      regex: /\bno\s+human\s+(?:oversight|intervention|needed|involvement)\b/gi,
+      category: "Claims",
+      severity: "Needs attention",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: () => "Total automation assertions claiming zero human oversight represent deceptive AI capability positioning.",
+    },
+    {
+      regex: /\bon\s+complete\s+autopilot\b/gi,
+      category: "Claims",
+      severity: "Needs attention",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: () => "Describing operations as 'on complete autopilot' misleads users about system autonomy and oversight needs.",
+    },
+    {
+      regex: /\beliminates?\s+(?:the\s+need\s+for\s+)?(?:expensive\s+)?(?:consultants?|agencies|contractors?|staff|employees?)\b/gi,
+      category: "Messaging",
+      severity: "Needs attention",
+      evidenceStatus: "Review suggestion",
+      sourceType: "msg",
+      explanation: (m) => `Promising to “${m}” is an ungrounded workforce-elimination claim that departs from calm, respectful brand messaging.`,
+    },
+
+    // 5. Timeline / Instant Results
+    {
+      regex: /\bwithin\s+your\s+first\s+(?:month|week|day|7\s+days|30\s+days)\b/gi,
+      category: "Claims",
+      severity: "Suggestion",
+      evidenceStatus: "Evidence needed",
+      sourceType: "claim",
+      explanation: (m) => `Fixed time-to-value pledges like “${m}” require verified onboarding telemetry data.`,
+    },
+    {
+      regex: /\binstant\s+(?:results?|success|growth)\b/gi,
+      category: "Claims",
+      severity: "Suggestion",
+      evidenceStatus: "Review suggestion",
+      sourceType: "claim",
+      explanation: () => "Promises of 'instant' outcomes constitute recognized deceptive ease red flags.",
+    },
+    {
+      regex: /\bovernight\b/gi,
+      category: "Tone",
+      severity: "Suggestion",
+      evidenceStatus: "Review suggestion",
+      sourceType: "tone",
+      explanation: () => "Claiming 'overnight' transformation conflicts with NovaDesk's calm, realistic voice.",
+    },
+
+    // 6. Tone / Absolutes & Hyperbole
+    {
+      regex: /\bnever\s+makes?\s+mistakes\b/gi,
+      category: "Tone",
+      severity: "Needs attention",
+      evidenceStatus: "Review suggestion",
+      sourceType: "tone",
+      explanation: () => "Software products cannot claim perfection or zero error rates ('never makes mistakes').",
+    },
+    {
+      regex: /\bnever\s+experiences?\s+downtime\b/gi,
+      category: "Tone",
+      severity: "Needs attention",
+      evidenceStatus: "Review suggestion",
+      sourceType: "tone",
+      explanation: () => "Absolute reliability assertions ('never experiences downtime') create legal exposure without infrastructure guarantees.",
+    },
+    {
+      regex: /\bguarantee(?:s|d)?\b/gi,
+      category: "Tone",
+      severity: "Suggestion",
+      evidenceStatus: "Review suggestion",
+      sourceType: "tone",
+      explanation: () => "Unqualified guarantees conflict with TONE-001's commitment to calm, grounded expectations.",
+    },
+    {
+      regex: /\bevery\s+(?:team|user|business|company)\b/gi,
+      category: "Tone",
+      severity: "Suggestion",
+      evidenceStatus: "Review suggestion",
+      sourceType: "tone",
+      explanation: (m) => `Sweeping universal claims ('${m}') should be focused to target audiences to remain credible.`,
+    },
+    {
+      regex: /\binfinite\s+productivity,\s+unlimited\s+growth,\s+and\s+guaranteed\s+success\b/gi,
+      category: "Tone",
+      severity: "Needs attention",
+      evidenceStatus: "Review suggestion",
+      sourceType: "tone",
+      explanation: () => "Triple superlative promises are peak marketing hyperbole forbidden by TONE-001.",
+    },
+    {
+      regex: /\brevolutionary\b/gi,
+      category: "Tone",
+      severity: "Suggestion",
+      evidenceStatus: "Review suggestion",
+      sourceType: "tone",
+      explanation: () => "The word 'revolutionary' is a clichéd tech hyperbole that conflicts with NovaDesk's calm, specific voice.",
+    },
+
+    // 7. Positioning & Deceptive Ease
+    {
+      regex: /\bquantum-powered\s+productivity\s+platform\b/gi,
+      category: "Messaging",
+      severity: "Needs attention",
+      evidenceStatus: "Review suggestion",
+      sourceType: "msg",
+      explanation: () => "Using pseudoscientific buzzwords ('quantum-powered') for a business collaboration app misleads prospects.",
+    },
+    {
+      regex: /\bturning\s+any\s+startup\s+into\s+a\s+billion-dollar\s+enterprise\s+overnight\b/gi,
+      category: "Messaging",
+      severity: "Needs attention",
+      evidenceStatus: "Review suggestion",
+      sourceType: "msg",
+      explanation: () => "'Overnight billion-dollar' promises are recognized deceptive trade practice red flags.",
+    },
+    {
+      regex: /\bno\s+technical\s+expertise,\s+investment,\s+or\s+effort\s+required\b/gi,
+      category: "Messaging",
+      severity: "Needs attention",
+      evidenceStatus: "Review suggestion",
+      sourceType: "msg",
+      explanation: () => "Promising dramatic enterprise outcomes with zero effort creates false expectations.",
+    },
+  ];
+
+  let patternIndex = 1;
+  for (const pattern of semanticPatterns) {
+    const source =
+      pattern.sourceType === "claim"
+        ? claimSource
+        : pattern.sourceType === "tone"
+          ? toneSource
+          : msgSource;
+    if (!source) continue;
+
+    const matches = Array.from(text.matchAll(pattern.regex));
+    for (const match of matches) {
+      const excerpt = match[0];
+      // Avoid duplicate findings on identical excerpt
+      if (findings.some((f) => f.excerpt.toLowerCase() === excerpt.toLowerCase())) {
+        continue;
       }
-    });
-  }
-
-  // 3. Positioning & Deceptive Ease (Messaging)
-  if (msgSource) {
-    const msgPatterns = [
-      {
-        regex: /\bquantum-powered\s+productivity\s+platform\b/i,
-        excerpt: "world's first quantum-powered productivity platform",
-        explanation:
-          "Using pseudoscientific buzzwords ('quantum-powered') for a business collaboration app misleads prospects and departs from approved MSG-001 positioning.",
-        suggestion:
-          "Position accurately: 'modern workspace designed to simplify daily collaboration.'",
-      },
-      {
-        regex:
-          /\bturning\s+any\s+startup\s+into\s+a\s+billion-dollar\s+enterprise\s+overnight\b/i,
-        excerpt:
-          "turning any startup into a billion-dollar enterprise overnight",
-        explanation:
-          "'Overnight billion-dollar' promises are recognized deceptive trade practice red flags in advertising self-regulation (ASCI Code Chapter I).",
-        suggestion:
-          "Highlight sustainable team scaling and operational discipline.",
-      },
-      {
-        regex:
-          /\bno\s+technical\s+expertise,\s+investment,\s+or\s+effort\s+required\b/i,
-        excerpt: "No technical expertise, investment, or effort required",
-        explanation:
-          "Promising dramatic enterprise outcomes with zero effort creates false expectations and diminishes product professionalism.",
-        suggestion:
-          "Highlight intuitive onboarding: 'Intuitive interface designed for quick team adoption.'",
-      },
-    ];
-
-    msgPatterns.forEach((item, index) => {
-      const match = text.match(item.regex);
-      if (match) {
-        findings.push({
-          id: `ai:msg:${index + 1}`,
-          category: "Messaging",
-          severity: "Needs attention",
-          evidenceStatus: "Review suggestion",
-          location: "Draft text",
-          excerpt: match[0],
-          explanation: item.explanation,
-          sourceId: msgSource.id,
-          sourceVersion: msgSource.version,
-          suggestion: item.suggestion,
-          detectedBy: "ai",
-        });
-      }
-    });
+      const { alternative } = generateAlternativeClaim(excerpt);
+      findings.push({
+        id: `ai:${pattern.sourceType}:${patternIndex++}`,
+        category: pattern.category,
+        severity: pattern.severity,
+        evidenceStatus: pattern.evidenceStatus,
+        location: "Draft text",
+        excerpt,
+        explanation: pattern.explanation(excerpt),
+        sourceId: source.id,
+        sourceVersion: source.version,
+        suggestion: `Alternative claim: Replace with “${alternative}” (or link approved evidence in Brand guidelines).`,
+        replacement: { from: excerpt, to: alternative },
+        detectedBy: "ai",
+      });
+    }
   }
 
   // Calculate holistic governance assessment
@@ -423,7 +497,7 @@ export function runRichSimulatedAiReview(
     score,
     summary:
       count >= 5
-        ? "CRITICAL BRAND GOVERNANCE RISK: This draft contains extensive unverified performance metrics, regulatory-restricted financial guarantees (500% ROI), and extreme hyperbolic claims. Publication would create acute legal liability and severe brand trust erosion."
+        ? "CRITICAL BRAND GOVERNANCE RISK: This draft contains extensive unverified performance metrics, zero-downtime promises, workforce elimination statements, and extreme hyperbolic claims. Publication would create acute legal liability and severe brand trust erosion."
         : count >= 2
           ? "MODERATE GOVERNANCE EXPOSURE: The draft contains several unsupported claims and hyperbolic expressions that deviate from NovaDesk's calm, evidence-based standard."
           : "COMPLIANT DRAFT: Content aligns with brand positioning and requires standard review before publication.",

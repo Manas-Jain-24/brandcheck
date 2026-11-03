@@ -27,6 +27,26 @@ function rebuildDocument(doc: DocumentMap, texts: string[]) {
   const segments = doc.segments.map((part, index) => { const start = offset; offset += texts[index].length; const end = offset; offset += 2; return { label: part.label, start, end }; });
   return { body: texts.join("\n\n"), document: { ...doc, segments } };
 }
+function formatEventDetail(action: string, detailStr: string, version?: number | null): string {
+  try {
+    const detail = JSON.parse(detailStr);
+    if (detail.note) return detail.note;
+    if (detail.reviewer) return `Assigned reviewer: ${detail.reviewer}`;
+    if (action === "submit") return `Submitted revision v${version ?? 1} for review.`;
+    if (action === "draft_created") return `Draft created (v1).`;
+    if (action === "saveDraft") return `Saved new revision v${version ?? ""}.`;
+    if (action === "reviewAI") return `Text AI + rule check executed against policy v${detail.policyVersion ?? 0}.`;
+    if (action === "reviewVisual") return `Visual asset inspected with AI.`;
+    if (action === "recheckDraft") return `Deterministic brand rules rechecked.`;
+    if (action === "visual_candidate_resolved") return `Visual lead ${detail.decision ?? "reviewed"}: ${detail.note || ""}`;
+    if (action === "policy_recheck") return `Policy updated to v${detail.policyVersion}; draft rechecked.`;
+    if (action === "approved") return `Approved for publication.`;
+    if (action === "changes_requested") return `Changes requested by reviewer.`;
+    return detail.message || detail.reason || "Action recorded in audit log.";
+  } catch {
+    return "Action recorded.";
+  }
+}
 export default function WorkspaceProduct() {
   const [user, setUser] = useState<{ userId: string; email: string } | null>(null);
   const [ready, setReady] = useState(false), [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -603,15 +623,28 @@ export default function WorkspaceProduct() {
                         )}
 
                         <h3 className="text-xs uppercase tracking-wider text-[var(--text-subtle)] mt-6">Discussion & decision log</h3>
-                        {data.events.filter(event => event.draft_id === selected.id && ["comment","approved","changes_requested","reviewer_assigned"].includes(event.action)).slice(0,20).map(event => (
-                          <div className="product-thread-entry p-3 bg-[var(--bg-surface-sunken)] rounded my-2 text-xs border border-[var(--border-subtle)]" key={event.id}>
-                            <div className="flex items-center justify-between">
-                              <strong className="capitalize">{event.action.replaceAll("_"," ")}</strong>
-                              <span className="text-[var(--text-subtle)] text-[11px]">{event.actor_email} · {new Date(event.created_at).toLocaleString()}</span>
+                        {(() => {
+                          const draftEvents = data.events.filter(event =>
+                            event.draft_id === selected.id &&
+                            ["comment","approved","changes_requested","reviewer_assigned","submit","draft_created","saveDraft","reviewAI","reviewVisual","recheckDraft","visual_candidate_resolved","policy_recheck"].includes(event.action)
+                          );
+                          if (draftEvents.length === 0) {
+                            return (
+                              <p className="product-empty text-xs text-[var(--text-subtle)] my-2 p-3 bg-[var(--bg-surface-sunken)] rounded border border-[var(--border-subtle)]">
+                                No activity recorded for this content item yet. Submit the draft, leave a comment, or record a reviewer decision above.
+                              </p>
+                            );
+                          }
+                          return draftEvents.slice(0, 30).map(event => (
+                            <div className="product-thread-entry p-3 bg-[var(--bg-surface-sunken)] rounded my-2 text-xs border border-[var(--border-subtle)]" key={event.id}>
+                              <div className="flex items-center justify-between">
+                                <strong className="capitalize">{event.action.replaceAll("_"," ")}</strong>
+                                <span className="text-[var(--text-subtle)] text-[11px]">{event.actor_email} · {new Date(event.created_at).toLocaleString()}</span>
+                              </div>
+                              <p className="mt-1 text-[var(--text-main)]">{formatEventDetail(event.action, event.detail, event.version)}</p>
                             </div>
-                            <p className="mt-1 text-[var(--text-main)]">{JSON.parse(event.detail).note || JSON.parse(event.detail).reviewer || ""}</p>
-                          </div>
-                        ))}
+                          ));
+                        })()}
                       </div>
                     </>
                   )}

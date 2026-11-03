@@ -20,6 +20,108 @@ const makeFinding = (
   sourceVersion: source.version,
 });
 
+export function generateAlternativeClaim(excerpt: string): { alternative: string; reason: string } {
+  const lower = excerpt.toLowerCase();
+
+  // 1. Revenue, ROI & financial claims
+  if (/(?:revenue|roi|sales|profit|dollar|turnover)/i.test(lower)) {
+    return {
+      alternative: "proven to help drive steady, measurable revenue growth for growing teams",
+      reason: "Replaces unverified financial percentages with approved value-based growth positioning.",
+    };
+  }
+
+  // 2. Accuracy, prediction & zero errors/downtime
+  if (/(?:accuracy|predict|zero\s+(?:operational\s+)?failures|zero\s+downtime|zero\s+errors?|zero\s+bugs?|100%\s+uptime)/i.test(lower)) {
+    return {
+      alternative: "high predictive reliability and resilient architecture engineered for high availability",
+      reason: "Replaces absolute perfection with substantiated high-availability engineering positioning.",
+    };
+  }
+
+  // 3. Human intervention & autonomous operations
+  if (/(?:human\s+intervention|human\s+oversight|without\s+human|complete\s+autopilot|autopilot|replace\s+(?:your\s+)?(?:team|staff)|eliminates?\s+(?:the\s+need\s+for\s+)?(?:expensive\s+)?(?:consultants?|humans?|staff|agencies))/i.test(lower)) {
+    if (/consultant|agenc|staff/i.test(lower)) {
+      return {
+        alternative: "empowers existing teams to execute with greater speed and internal clarity",
+        reason: "Replaces workforce elimination claims with team empowerment positioning.",
+      };
+    }
+    return {
+      alternative: "with streamlined automation that keeps authorized teams in control",
+      reason: "Replaces ungrounded total automation with approved human-in-the-loop workflow positioning.",
+    };
+  }
+
+  // 4. Productivity multipliers & time reduction
+  if (/(?:\d+x\s+productivity|workweek|inefficiency|10x|100x|1000x|\d+%\s+(?:productivity|faster|time))/i.test(lower)) {
+    return {
+      alternative: "designed to streamline workflows and reduce repetitive coordination overhead",
+      reason: "Replaces unverified multiplier assertions with approved workflow efficiency benefits.",
+    };
+  }
+
+  // 5. Cost reduction
+  if (/(?:cost|overhead|expenses?|spend)/i.test(lower) && /(?:\d+%|cut|slash|save)/i.test(lower)) {
+    return {
+      alternative: "helps optimize operational expenses by automating routine administrative tasks",
+      reason: "Replaces unsubstantiated cost-slashing numbers with verifiable operational optimization.",
+    };
+  }
+
+  // 6. Absolute guarantees & infallibility
+  if (/(?:guarantee|guaranteed|guarantees)/i.test(lower)) {
+    return {
+      alternative: "committed to helping teams achieve consistent, measurable results",
+      reason: "Replaces legally risky absolute guarantees with commitment-oriented positioning.",
+    };
+  }
+
+  if (/(?:never\s+makes?\s+mistakes|flawless|infallible|perfect)/i.test(lower)) {
+    return {
+      alternative: "engineered with continuous automated validation to minimize operational errors",
+      reason: "Replaces impossible zero-defect claims with realistic engineering quality standards.",
+    };
+  }
+
+  if (/(?:never\s+experiences?\s+downtime|100%\s+safe|100%\s+risk-free)/i.test(lower)) {
+    return {
+      alternative: "architected for enterprise-grade security and resilient uptime",
+      reason: "Replaces absolute risk-free claims with substantiated enterprise resiliency standards.",
+    };
+  }
+
+  // 7. Timeline & deceptive ease
+  if (/(?:overnight|billion-dollar|in\s+seconds|within\s+(?:your\s+)?(?:first\s+)?(?:month|week|7\s+days|30\s+days)|no\s+effort|push\s+of\s+a\s+button)/i.test(lower)) {
+    return {
+      alternative: "through structured, sustainable team adoption with intuitive onboarding",
+      reason: "Replaces deceptive instant timeline claims with realistic adoption milestones.",
+    };
+  }
+
+  // 8. Superlatives & competitor comparisons
+  if (/(?:better\s+than\s+every\s+competitor|world's\s+best|revolutionary|unbeatable|unrivaled|#1|best\s+ever|miracle)/i.test(lower)) {
+    return {
+      alternative: "purpose-built with differentiated collaboration capabilities",
+      reason: "Replaces unsubstantiated superlatives with concrete product capability positioning.",
+    };
+  }
+
+  // 9. Customer numbers
+  if (/(?:\d+\s+million\s+companies|trusted\s+by\s+\d+)/i.test(lower)) {
+    return {
+      alternative: "trusted by forward-thinking, high-growth organizations",
+      reason: "Replaces unverified adoption statistics with approved community scale descriptors.",
+    };
+  }
+
+  // 10. General numeric percentage or multiplier
+  return {
+    alternative: "proven to help teams achieve significant, measurable workflow improvements",
+    reason: "Replaces unverified quantitative metric with approved benefit description.",
+  };
+}
+
 export function reviewDraft(
   body: DraftBody,
   sources: Source[],
@@ -101,7 +203,8 @@ export function reviewDraft(
           ).test(excerpt.replace(/\s+/g, " "))
         );
       });
-      if (claimSource && !supportedClaim)
+      if (claimSource && !supportedClaim) {
+        const { alternative, reason } = generateAlternativeClaim(excerpt);
         findings.push(
           makeFinding(claimSource, {
             id: `claim:${section.key}:${index}`,
@@ -111,11 +214,13 @@ export function reviewDraft(
             location: section.location,
             excerpt,
             explanation:
-              "This sounds like a measurable performance claim. The approved pack does not contain evidence for it. BrandCheck has not determined whether it is true or false.",
+              `This sounds like a measurable performance claim. ${reason} The approved pack does not contain evidence for it. BrandCheck has not determined whether it is true or false.`,
             suggestion:
-              "Link current approved evidence for reviewer assessment, or remove the unsupported measurement and describe only an approved benefit.",
+              `Alternative claim: Replace with “${alternative}” (or link current approved evidence in Brand guidelines).`,
+            replacement: { from: excerpt, to: alternative },
           }),
         );
+      }
     }
 
     const toneSource =
@@ -127,7 +232,8 @@ export function reviewDraft(
     const absolute = text.match(
       /\b(?:guarantee(?:s|d)?|always|never|every team|perfect|best ever|miracle cure)\b/i,
     );
-    if (toneSource && absolute)
+    if (toneSource && absolute) {
+      const { alternative } = generateAlternativeClaim(absolute[0]);
       findings.push(
         makeFinding(toneSource, {
           id: `tone:${section.key}:absolute`,
@@ -139,9 +245,11 @@ export function reviewDraft(
           explanation:
             "This wording may sound more absolute than the approved clear, specific voice. A person should decide in context.",
           suggestion:
-            "Describe the product benefit specifically, without an absolute promise.",
+            `Alternative wording: Replace “${absolute[0]}” with “${alternative}”.`,
+          replacement: { from: absolute[0], to: alternative },
         }),
       );
+    }
   }
 
   if (body.image) {
@@ -258,7 +366,7 @@ export async function reviewDraftHybrid(
   // Preserve rule findings and accept only source-compatible AI leads.
   const merged: Finding[] = [...deterministicFindings];
 
-  for (const rawFinding of aiResult.isSimulated ? [] : aiResult.findings) {
+  for (const rawFinding of aiResult.findings || []) {
     const aiFinding = groundAIFinding(rawFinding, sources);
     if (!aiFinding) continue;
     const isDuplicate = merged.some(
