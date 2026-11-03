@@ -154,16 +154,26 @@ ${
  * When no API key is provided, performs sentence-by-sentence analysis
  * catching all outlandish claims, absolutes, and deceptive ease assertions.
  */
-function runRichSimulatedAiReview(
+export function runRichSimulatedAiReview(
   body: DraftBody,
   activeSourcesMap: Map<string, Source>,
 ): { findings: Finding[]; assessment: DraftAssessment } {
   const text = body.text.trim();
   const findings: Finding[] = [];
 
-  const claimSource = activeSourcesMap.get("CLAIM-001");
-  const toneSource = activeSourcesMap.get("TONE-001");
-  const msgSource = activeSourcesMap.get("MSG-001");
+  const sourcesList = Array.from(activeSourcesMap.values());
+  const claimSource =
+    sourcesList.find((s) => s.kind === "Claim policy") ||
+    activeSourcesMap.get("CLAIM-001");
+  const toneSource =
+    sourcesList.find(
+      (s) =>
+        s.id.includes("TONE") ||
+        (s.kind === "Messaging" && /tone|voice/i.test(s.title)),
+    ) || activeSourcesMap.get("TONE-001");
+  const msgSource =
+    sourcesList.find((s) => s.kind === "Messaging" && !s.id.includes("TONE")) ||
+    activeSourcesMap.get("MSG-001");
 
   // 1. Extreme Quantified / Multiplier Claims
   if (claimSource) {
@@ -467,9 +477,13 @@ export async function runGroundedGeminiReview(
       if (!response.ok) throw new Error(result.error || "Live review is unavailable.");
       if (!Array.isArray(result.findings)) throw new Error("The live review response was incomplete.");
       return { findings: result.findings, assessment: null, model: result.model, isSimulated: false };
-    } catch (error) {
-      return { findings: [], assessment: null, isSimulated: true,
-        error: error instanceof Error ? error.message : "Live review is unavailable. Local checks are still available." };
+    } catch {
+      const simulated = runRichSimulatedAiReview(body, activeSourcesMap);
+      return {
+        findings: simulated.findings,
+        assessment: simulated.assessment,
+        isSimulated: true,
+      };
     }
   }
 

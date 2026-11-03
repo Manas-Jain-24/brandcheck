@@ -29,6 +29,7 @@ async function handle(request: Request, write: boolean) {
     for (const chunk of chunks) { data.set(chunk, offset); offset += chunk.length; }
     return json(await mutateWorkspace(env.DB, user, JSON.parse(new TextDecoder().decode(data)), { aiReview: (title, text, pack) => runSavedAIReview(request, title, text, pack), visualReview: (image, pack) => runSavedVisualReview(request, image, pack) }));
   } catch (error) {
+    console.error("API /api/workspaces error:", error);
     if (error instanceof ReviewError) return json({ error: error.message }, error.status);
     if (error instanceof ZodError || error instanceof SyntaxError) return json({ error: "Check the request fields and limits." }, 400);
     return json({ error: "The workspace could not be updated. Refresh and retry." }, 503);

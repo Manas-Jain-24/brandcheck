@@ -24,7 +24,8 @@ export default async function HomePage() {
           <a href="/policy-lab" className="hover:text-[var(--text-main)] transition-colors">Policy lab</a>
           <a
             href="/workspace"
-            className="inline-flex items-center justify-center px-3.5 py-1.5 text-xs font-medium rounded-[var(--radius-md)] bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-primary-hover)] transition-colors no-underline"
+            className="inline-flex items-center justify-center px-3.5 py-1.5 text-xs font-medium rounded-[var(--radius-md)] bg-[var(--accent-primary)] !text-white hover:bg-[var(--accent-primary-hover)] transition-colors no-underline"
+            style={{ color: "#ffffff" }}
           >
             Sign in
           </a>
@@ -46,7 +47,8 @@ export default async function HomePage() {
           <div className="flex items-center gap-5">
             <a
               href="/workspace"
-              className="inline-flex items-center justify-center h-10 px-5 text-sm font-medium rounded-[var(--radius-md)] bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-primary-hover)] transition-colors no-underline shadow-sm"
+              className="inline-flex items-center justify-center h-10 px-5 text-sm font-medium rounded-[var(--radius-md)] bg-[var(--accent-primary)] !text-white hover:bg-[var(--accent-primary-hover)] transition-colors no-underline shadow-sm"
+              style={{ color: "#ffffff" }}
             >
               Open workspace
             </a>
@@ -276,7 +278,8 @@ export default async function HomePage() {
           <div className="flex items-center justify-center gap-4">
             <a
               href="/workspace"
-              className="inline-flex items-center justify-center h-9 px-4 text-xs font-medium rounded-[var(--radius-md)] bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-primary-hover)] transition-colors no-underline"
+              className="inline-flex items-center justify-center h-9 px-4 text-xs font-medium rounded-[var(--radius-md)] bg-[var(--accent-primary)] !text-white hover:bg-[var(--accent-primary-hover)] transition-colors no-underline"
+              style={{ color: "#ffffff" }}
             >
               Open workspace
             </a>

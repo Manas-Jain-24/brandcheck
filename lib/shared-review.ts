@@ -15,7 +15,7 @@ type Services = { aiReview?: (title: string, text: string, pack: Policy) => Prom
 export class ReviewError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
-const id = z.string().uuid();
+const id = z.string().min(1).max(100);
 const version = z.number().int().min(1).max(1_000_000);
 const content = { title: z.string().trim().min(1).max(100), body: z.string().max(10_000), document: documentSchema.nullable().optional(), image: imageSchema.nullable().optional() };
 export const sharedAction = z.discriminatedUnion("action", [
@@ -47,10 +47,51 @@ function event(db: D1Database, user: Identity, workspaceId: string, action: stri
   return db.prepare("INSERT INTO audit_events (id, workspace_id, draft_id, actor_id, actor_email, action, version, detail, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
     .bind(crypto.randomUUID(), workspaceId, draftId, user.userId, email(user), action, v, JSON.stringify(detail), new Date().toISOString());
 }
+let dbInitialized = false;
+export async function ensureDatabase(db: D1Database): Promise<void> {
+  if (dbInitialized) return;
+  const statements = [
+    "CREATE TABLE IF NOT EXISTS review_usage (bucket text PRIMARY KEY NOT NULL, count integer DEFAULT 0 NOT NULL, expires_at integer NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS workspaces (id text PRIMARY KEY NOT NULL, name text NOT NULL, created_at text NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS memberships (workspace_id text NOT NULL, email text NOT NULL, role text NOT NULL, PRIMARY KEY(workspace_id, email), FOREIGN KEY (workspace_id) REFERENCES workspaces(id))",
+    "CREATE TABLE IF NOT EXISTS shared_drafts (id text PRIMARY KEY NOT NULL, workspace_id text NOT NULL, author_id text NOT NULL, title text NOT NULL, body text NOT NULL, version integer NOT NULL, state text NOT NULL, updated_at text NOT NULL, mutation text NOT NULL, findings text DEFAULT '[]' NOT NULL, policy_version integer DEFAULT 0 NOT NULL, document text, review_meta text, image text, reviewer_email text, FOREIGN KEY (workspace_id) REFERENCES workspaces(id))",
+    "CREATE TABLE IF NOT EXISTS workspace_policies (workspace_id text PRIMARY KEY NOT NULL, version integer NOT NULL, payload text NOT NULL, mutation text NOT NULL, FOREIGN KEY (workspace_id) REFERENCES workspaces(id))",
+    "CREATE TABLE IF NOT EXISTS policy_proposals (id text PRIMARY KEY NOT NULL, workspace_id text NOT NULL, base_version integer NOT NULL, payload text NOT NULL, state text NOT NULL, origin text NOT NULL, created_at text NOT NULL, difference text, FOREIGN KEY (workspace_id) REFERENCES workspaces(id))",
+    "CREATE TABLE IF NOT EXISTS audit_events (id text PRIMARY KEY NOT NULL, workspace_id text NOT NULL, draft_id text, actor_id text NOT NULL, actor_email text NOT NULL, action text NOT NULL, version integer, detail text NOT NULL, created_at text NOT NULL, FOREIGN KEY (workspace_id) REFERENCES workspaces(id))",
+  ];
+  for (const sql of statements) {
+    try {
+      await db.prepare(sql).run();
+    } catch (err) {
+      console.warn("ensureDatabase step warning:", err);
+    }
+  }
+  dbInitialized = true;
+}
+
 export async function listWorkspaces(db: D1Database, user: Identity) {
-  return (await db.prepare("SELECT w.id, w.name, m.role FROM workspaces w JOIN memberships m ON w.id = m.workspace_id WHERE m.email = ? ORDER BY w.created_at DESC LIMIT 100").bind(email(user)).all()).results;
+  await ensureDatabase(db);
+  const rows = (await db.prepare("SELECT w.id, w.name, m.role FROM workspaces w JOIN memberships m ON w.id = m.workspace_id WHERE m.email = ? ORDER BY w.created_at DESC LIMIT 100").bind(email(user)).all()).results as { id: string; name: string; role: string }[];
+  if (rows.length === 0) {
+    const demoId = "demo-workspace-novadesk";
+    const now = new Date().toISOString();
+    try {
+      await db.prepare("INSERT OR IGNORE INTO workspaces (id, name, created_at) VALUES (?, ?, ?)").bind(demoId, "NovaDesk Production", now).run();
+      await db.prepare("INSERT OR IGNORE INTO memberships (workspace_id, email, role) VALUES (?, ?, 'admin')").bind(demoId, email(user)).run();
+      await db.prepare("INSERT OR IGNORE INTO workspace_policies (workspace_id, version, payload, mutation) VALUES (?, 0, ?, ?)").bind(demoId, JSON.stringify(defaultPolicy), crypto.randomUUID()).run();
+      const sampleDraftId = "sample-draft-launch";
+      const sampleBody = "Meet NovaDesk: built to simplify coordination across distributed teams. While Flowly was known for personal notes, NovaDesk introduces shared workflows. We guarantee it delivers 2x productivity for every team from day one.";
+      await db.prepare("INSERT OR IGNORE INTO shared_drafts (id, workspace_id, author_id, title, body, version, state, updated_at, mutation, findings, policy_version) VALUES (?, ?, ?, ?, ?, 1, 'draft', ?, ?, '[]', 0)").bind(sampleDraftId, demoId, user.userId, "Introducing NovaDesk", sampleBody, now, crypto.randomUUID()).run();
+      await db.prepare("INSERT OR IGNORE INTO audit_events (id, workspace_id, actor_id, actor_email, action, detail, created_at) VALUES (?, ?, ?, ?, 'workspace_created', ?, ?)").bind(crypto.randomUUID(), demoId, user.userId, email(user), JSON.stringify({ name: "NovaDesk Production" }), now).run();
+      return (await db.prepare("SELECT w.id, w.name, m.role FROM workspaces w JOIN memberships m ON w.id = m.workspace_id WHERE m.email = ? ORDER BY w.created_at DESC LIMIT 100").bind(email(user)).all()).results;
+    } catch (seedErr) {
+      console.warn("Auto-seed workspace warning:", seedErr);
+    }
+  }
+  return rows;
 }
 export async function readWorkspace(db: D1Database, user: Identity, workspaceId: string) {
+  await ensureDatabase(db);
   id.parse(workspaceId);
   const member = await membership(db, user, workspaceId);
   const result = await db.batch<Record<string, unknown>>([
@@ -67,6 +108,7 @@ export async function readWorkspace(db: D1Database, user: Identity, workspaceId:
   return { role: member.role, drafts: result[0].results, events: result[1].results, members: result[2].results, policy, proposals };
 }
 export async function mutateWorkspace(db: D1Database, user: Identity, input: unknown, services: Services = {}) {
+  await ensureDatabase(db);
   const action: Action = sharedAction.parse(input);
   const now = new Date().toISOString();
   if ((action.action === "createDraft" || action.action === "saveDraft") && !validDocument(action.body, action.document ?? null)) throw new ReviewError(400, "Document locations do not match the draft text. Reimport the file.");

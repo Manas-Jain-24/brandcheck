@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "../components/brandcheck/styles.css";
+import "../components/workspace-product.css";
 
 export const metadata: Metadata = {
   title: "BrandCheck — Source-Grounded Brand Review & Approvals",

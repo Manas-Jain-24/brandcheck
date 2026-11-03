@@ -57,33 +57,35 @@
 }
 
 .product-sidebar nav button {
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  color: var(--text-muted);
-  padding: 8px 10px;
-  text-align: left;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  transition: all 120ms ease-out;
-  width: 100%;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--radius-md) !important;
+  color: var(--text-muted) !important;
+  padding: 8px 10px !important;
+  text-align: left !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  gap: 10px !important;
+  align-items: center !important;
+  transition: all 120ms ease-out !important;
+  width: 100% !important;
+  height: auto !important;
+  margin: 0 !important;
 }
 
 .product-sidebar nav button:hover {
-  background-color: var(--bg-surface-raised);
-  color: var(--text-main);
+  background-color: var(--bg-surface-raised) !important;
+  color: var(--text-main) !important;
 }
 
 .product-sidebar nav button[aria-current="page"] {
-  background-color: var(--bg-surface-raised);
-  color: var(--text-main);
-  font-weight: 600;
-  border-left: 2px solid var(--accent-primary);
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background-color: var(--bg-surface-raised) !important;
+  color: var(--text-main) !important;
+  font-weight: 600 !important;
+  border-left: 2px solid var(--accent-primary) !important;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0 !important;
 }
 
 .product-nav-count {
@@ -291,8 +293,9 @@
 /* -------------------------------------------------------------------------
    Button System (3 Variants: Primary, Secondary, Ghost)
    ------------------------------------------------------------------------- */
-.product-app button,
-.product-button {
+.product-app main button:not(.secondary):not(.product-template-pill):not(.text-button),
+.product-button,
+a.product-button {
   font-family: var(--font-sans);
   font-size: 12px;
   font-weight: 500;
@@ -301,7 +304,7 @@
   border-radius: var(--radius-sm);
   border: 1px solid var(--accent-primary);
   background-color: var(--accent-primary);
-  color: var(--text-inverse);
+  color: #ffffff !important;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -312,8 +315,9 @@
   transition: background-color 120ms ease-out, border-color 120ms ease-out;
 }
 
-.product-app button:hover,
-.product-button:hover {
+.product-app main button:not(.secondary):not(.product-template-pill):not(.text-button):hover,
+.product-button:hover,
+a.product-button:hover {
   background-color: var(--accent-primary-hover);
   border-color: var(--accent-primary-hover);
 }

@@ -41,8 +41,14 @@ h2,
 h3 {
   font-family: var(--font-display, "Newsreader", "Source Serif 4", Georgia, serif);
 }
-a {
+a:not([class*="text-"]):not(.product-button):not([class*="button"]):not([class*="primary"]) {
   color: inherit;
+}
+.product-button,
+a.product-button,
+.dark-button,
+button.dark-button {
+  color: #ffffff !important;
 }
 .sr-only {
   position: absolute;
@@ -296,6 +302,10 @@ a {
   color: #a5bdb0;
   margin-top: 1px;
 }
+.workspace-tag-wrapper {
+  position: relative;
+  margin-bottom: 24px;
+}
 .workspace-tag {
   border: 1px solid #ffffff23;
   background: #ffffff0b;
@@ -304,7 +314,22 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 31px;
+  width: 100%;
+  text-align: left;
+  transition: all 140ms ease;
+}
+.workspace-tag-btn {
+  cursor: pointer;
+  color: inherit;
+}
+.workspace-tag-btn:hover,
+.workspace-tag-btn.active {
+  background: #ffffff18;
+  border-color: #ffffff44;
+}
+.workspace-tag-btn:focus-visible {
+  outline: 2px solid #88bea4;
+  outline-offset: 2px;
 }
 .workspace-avatar {
   width: 34px;
@@ -315,9 +340,12 @@ a {
   color: #144536;
   border-radius: 8px;
   font-weight: 800;
+  flex-shrink: 0;
 }
-.workspace-tag div {
+.workspace-tag div,
+.workspace-tag-info {
   flex: 1;
+  min-width: 0;
 }
 .workspace-tag strong,
 .workspace-tag small {
@@ -325,14 +353,276 @@ a {
 }
 .workspace-tag strong {
   font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .workspace-tag small {
   font-size: 10px;
   color: #a8c1b2;
   margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .chevron {
   color: #aac4b3;
+  font-size: 13px;
+  transition: transform 150ms ease;
+}
+.chevron-open {
+  transform: rotate(180deg);
+}
+
+/* Company Switcher Dropdown */
+.workspace-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 260px;
+  background: #14372e;
+  border: 1px solid #366050;
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  z-index: 120;
+  overflow: hidden;
+  animation: fadeInDrop 150ms ease-out;
+}
+@keyframes fadeInDrop {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.workspace-dropdown-header {
+  padding: 10px 14px 6px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #8dab9a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.workspace-dropdown-list {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.workspace-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: transparent;
+  border: 0;
+  color: #e4eee7;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.workspace-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.workspace-dropdown-item.selected {
+  background: rgba(185, 218, 193, 0.15);
+  border: 1px solid rgba(185, 218, 193, 0.3);
+}
+.workspace-dropdown-avatar {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  background: #b9dac1;
+  color: #144536;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.workspace-dropdown-info {
+  flex: 1;
+  min-width: 0;
+}
+.workspace-dropdown-info strong {
+  display: block;
+  font-size: 12px;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.workspace-dropdown-info small {
+  display: block;
+  font-size: 10px;
+  color: #a0b8a8;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.workspace-dropdown-check {
+  color: #88bea4;
+  font-weight: 800;
+  font-size: 13px;
+}
+.workspace-dropdown-footer {
+  padding: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.workspace-dropdown-add-btn {
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #bfe6be !important;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 120ms ease;
+}
+.workspace-dropdown-add-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.workspace-dropdown-enterprise-link {
+  font-size: 10px;
+  color: #a8c1b2;
+  text-align: center;
+  text-decoration: none;
+  padding: 4px;
+  border-radius: 4px;
+}
+.workspace-dropdown-enterprise-link:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+/* Add Brand Profile Modal */
+.brand-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 20, 16, 0.72);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  animation: fadeInModal 140ms ease-out;
+}
+@keyframes fadeInModal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.brand-modal-card {
+  width: min(100%, 520px);
+  background: #ffffff;
+  color: #141715;
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  border: 1px solid #d4ded8;
+}
+.brand-modal-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e8ede9;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: #f7faf8;
+}
+.brand-modal-header h3 {
+  font-size: 18px;
+  margin: 0;
+  color: #184535;
+}
+.brand-modal-header p {
+  font-size: 12px;
+  color: #5d6e64;
+  margin: 4px 0 0;
+}
+.brand-modal-close {
+  background: none;
+  border: 0;
+  font-size: 16px;
+  color: #6e8174;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+.brand-modal-close:hover {
+  color: #141715;
+}
+.brand-modal-form {
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.brand-modal-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #273e31;
+}
+.brand-modal-form input,
+.brand-modal-form textarea {
+  padding: 8px 12px;
+  border: 1px solid #cad6ce;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #ffffff;
+  color: #141715;
+}
+.brand-modal-form input:focus,
+.brand-modal-form textarea:focus {
+  border-color: #184535;
+  outline: 2px solid rgba(24, 69, 53, 0.18);
+}
+.brand-modal-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.brand-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid #edf1ee;
+}
+.brand-modal-actions .secondary-button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #cad6ce;
+  background: #f4f6f4;
+  color: #2a3c31;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.brand-modal-actions .primary-button {
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: 1px solid #1a4332;
+  background: #1a4332;
+  color: #ffffff !important;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
 }
 .nav-caption {
   font-size: 10px;
